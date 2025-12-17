@@ -12,7 +12,8 @@ pub fn lex(src: &str) -> Vec<Token> {
             continue;
         }
 
-        if chars[i] == '.' || chars[i] == '-' {
+        // Check if this is a Morse keyword (starts with . or - and eventually has /)
+        if (chars[i] == '.' || chars[i] == '-') && looks_like_morse(&chars, i) {
             let mut morse = String::new();
             while i < chars.len() && chars[i] != '/' {
                 morse.push(chars[i]);
@@ -80,8 +81,16 @@ pub fn lex(src: &str) -> Vec<Token> {
                 tokens.push(Token::Plus);
                 i += 1;
             }
+            '-' => {
+                tokens.push(Token::Minus);
+                i += 1;
+            }
             '*' => {
                 tokens.push(Token::Star);
+                i += 1;
+            }
+            '/' => {
+                tokens.push(Token::Slash);
                 i += 1;
             }
 
@@ -100,4 +109,22 @@ pub fn lex(src: &str) -> Vec<Token> {
     }
 
     tokens
+}
+
+fn looks_like_morse(chars: &[char], start: usize) -> bool {
+    // Look ahead to see if there's a / indicating a Morse keyword
+    for i in start..chars.len() {
+        if chars[i] == '/' {
+            return true;
+        }
+        // If we hit whitespace followed by something that's not morse-like, probably not morse
+        if chars[i].is_whitespace() {
+            continue;
+        }
+        // If we hit an alphanumeric or other operator, it's not morse
+        if chars[i] != '.' && chars[i] != '-' && !chars[i].is_whitespace() {
+            return false;
+        }
+    }
+    false
 }
