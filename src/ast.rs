@@ -26,6 +26,7 @@ pub enum Expr {
     Number(i64),
     Ident(String),
     String(String),
+    Call(String, Vec<Expr>),
     Binary(Box<Expr>, BinOp, Box<Expr>),
 }
 
@@ -39,6 +40,8 @@ pub enum BinOp {
 
 #[derive(Debug, Clone)]
 pub enum Node {
+    FuncDef(String, Vec<String>, Vec<Node>), // name, params, body
+    Return(Expr),
     If(Expr, Operator, Expr, Vec<Node>, Option<Vec<Node>>), // condition, operator, value, if_body, else_body
     Print(Expr),
     Set(String, Expr),

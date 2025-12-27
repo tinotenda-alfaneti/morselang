@@ -56,6 +56,40 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Node> {
 
                 ast.push(Node::If(left_expr, operator, right_expr, if_body, else_body));
             }
+            Token::Keyword(k) if k == "FUNC" => {
+                i += 1;
+                let name = match &tokens[i] {
+                    Token::Ident(n) => n.clone(),
+                    _ => panic!("expected function name after FUNC"),
+                };
+                i += 1;
+
+                // collect params until we hit a Keyword (the body starts with a Keyword)
+                let mut params = Vec::new();
+                while i < tokens.len() {
+                    if let Token::Ident(p) = &tokens[i] {
+                        params.push(p.clone());
+                        i += 1;
+                    } else {
+                        break;
+                    }
+                }
+
+                let mut body = Vec::new();
+                while i < tokens.len() {
+                    if let Token::Keyword(k) = &tokens[i] {
+                        if k == "END" {
+                            i += 1;
+                            break;
+                        }
+                    }
+                    let (stmt, new_i) = parse_statement(&tokens, i);
+                    body.push(stmt);
+                    i = new_i;
+                }
+
+                ast.push(Node::FuncDef(name, params, body));
+            }
             Token::Keyword(k) if k == "PRINT" => {
                 i += 1;
                 let (expr, new_i) = parse_expr(&tokens, i);
@@ -108,6 +142,11 @@ fn parse_statement(tokens: &[Token], mut i: usize) -> (Node, usize) {
             let (expr, new_i) = parse_expr(tokens, i);
             (Node::Set(var_name, expr), new_i)
         }
+        Token::Keyword(k) if k == "RETURN" => {
+            i += 1;
+            let (expr, new_i) = parse_expr(tokens, i);
+            (Node::Return(expr), new_i)
+        }
         _ => panic!("unexpected token in statement"),
     }
 }
@@ -119,8 +158,23 @@ fn parse_expr(tokens: &[Token], mut i: usize) -> (Expr, usize) {
             Expr::Number(*n)
         }
         Token::Ident(name) => {
+            // look ahead to see if this is a function call (followed by primary expressions)
+            let name_clone = name.clone();
             i += 1;
-            Expr::Ident(name.clone())
+            let mut args = Vec::new();
+            while i < tokens.len() {
+                match &tokens[i] {
+                    Token::Number(n) => { args.push(Expr::Number(*n)); i += 1; }
+                    Token::Ident(n) => { args.push(Expr::Ident(n.clone())); i += 1; }
+                    Token::String(s) => { args.push(Expr::String(s.clone())); i += 1; }
+                    _ => break,
+                }
+            }
+            if args.is_empty() {
+                Expr::Ident(name_clone)
+            } else {
+                Expr::Call(name_clone, args)
+            }
         }
         Token::String(s) => {
             i += 1;
